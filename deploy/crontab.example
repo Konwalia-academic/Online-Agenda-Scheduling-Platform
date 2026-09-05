@@ -1,0 +1,8 @@
+# Agenda Platform — cron entries
+#
+# Install with:  crontab -e   (as a user that can read/write the web files)
+#
+# Sync calendars automatically. Default every 10 minutes; match the value set
+# in Admin > Calendars > "Automatic sync interval".
+#
+# */10 * * * * /usr/bin/php /var/www/agenda/scripts/sync.php >> /var/www/agenda/storage/logs/sync.log 2>&1

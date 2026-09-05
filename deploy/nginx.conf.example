@@ -1,0 +1,57 @@
+# Agenda Platform — Nginx server block (Debian/Ubuntu, PHP 8.x + PHP-FPM)
+#
+# Place this file in /etc/nginx/sites-available/agenda.conf and enable it:
+#   sudo ln -s /etc/nginx/sites-available/agenda.conf /etc/nginx/sites-enabled/
+#   sudo nginx -t && sudo systemctl reload nginx
+#
+# Adjust server_name, root and the php-fpm socket to your environment.
+# The document root is the `public/` folder — the PHP application lives above it.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name agenda.example.com;          # <-- your domain
+
+    # redirect all traffic to HTTPS (after TLS is set up, e.g. with certbot)
+    # return 301 https://$host$request_uri;
+
+    root /var/www/agenda/public;             # <-- path to this repo's public/
+    index index.php index.html;
+
+    charset utf-8;
+    server_tokens off;
+
+    client_max_body_size 16M;
+
+    # Deny access to dotfiles and sensitive paths
+    location ~ /\. { deny all; }
+
+    # Never serve application internals directly
+    location ~ ^/(app|i18n|scripts|deploy|storage)/ { deny all; return 404; }
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;   # <-- match your PHP version
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param HTTPS $https;
+        include fastcgi_params;
+    }
+
+    # Long-lived caching for static assets
+    location ~* \.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    # Optional gzip
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
+}
+
+# If you enable HTTPS with certbot:
+#   sudo certbot --nginx -d agenda.example.com
+# it will add a 443 server block automatically.

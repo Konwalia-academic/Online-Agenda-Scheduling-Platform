@@ -1,0 +1,16 @@
+# Runtime / secrets — never commit these
+app/config.php
+storage/installed.lock
+storage/cache/*
+storage/uploads/*
+storage/logs/*
+storage/tmp/*
+storage/cache/.gitkeep
+storage/uploads/.gitkeep
+storage/logs/.gitkeep
+storage/tmp/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
