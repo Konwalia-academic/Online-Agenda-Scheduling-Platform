@@ -38,20 +38,19 @@ function base_url(): string
 
 function setting(string $key, mixed $default = null): mixed
 {
-    $cache = &$GLOBALS['__settings_cache'];
-    if ($cache === null) {
-        $cache = [];
+    if (!isset($GLOBALS['__settings_cache'])) {
+        $GLOBALS['__settings_cache'] = [];
         try {
             $rows = db()->query('SELECT skey, svalue FROM settings')->fetchAll();
             foreach ($rows as $row) {
-                $cache[$row['skey']] = $row['svalue'];
+                $GLOBALS['__settings_cache'][$row['skey']] = $row['svalue'];
             }
         } catch (Throwable) {
             // settings table may not exist yet during install
         }
     }
-    if (array_key_exists($key, $cache)) {
-        return $cache[$key];
+    if (array_key_exists($key, $GLOBALS['__settings_cache'])) {
+        return $GLOBALS['__settings_cache'][$key];
     }
     return $default;
 }
@@ -65,7 +64,7 @@ function set_setting(string $key, mixed $value): void
     );
     $stmt->execute([$key, $value]);
     // refresh the shared in-memory cache used by setting()
-    if ($GLOBALS['__settings_cache'] === null) {
+    if (!isset($GLOBALS['__settings_cache'])) {
         $GLOBALS['__settings_cache'] = [];
     }
     $GLOBALS['__settings_cache'][$key] = $value;
