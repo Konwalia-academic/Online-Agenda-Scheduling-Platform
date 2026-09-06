@@ -3,7 +3,7 @@
  * OAuth callback: Microsoft redirects here after the administrator signs in.
  * Exchanges the code (with PKCE verifier) for tokens and stores them.
  */
-require __DIR__ . '/../app/bootstrap.php';
+require __DIR__ . '/../../app/bootstrap.php';
 require_admin();
 
 $state = (string)($_GET['state'] ?? '');

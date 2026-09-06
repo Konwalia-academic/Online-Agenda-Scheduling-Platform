@@ -109,6 +109,8 @@ Agendas_code/
 
 ## 5. Deployment on Debian
 
+> **Using 宝塔面板 / BTPanel instead?** Follow the dedicated guide: [`deploy/btpanel.md`](deploy/btpanel.md) (Simplified Chinese + English). It covers creating the site, setting the run directory to `/public`, the open_basedir requirement, database creation, cron, and upgrading an already-running install.
+
 Run the following as `root` (or with `sudo`). `agenda.example.com` is your domain.
 
 ### 5.1 Install the base stack
@@ -232,7 +234,26 @@ Always use an **app password / SMTP authorization code**, never your main accoun
 
 ---
 
-## 9. Troubleshooting
+## 9. Upgrading an installed site
+
+Each release ships a self-contained `upgrade_<version>.php` at the project root. It applies the changes to a server that is **already deployed and running** (no re-upload of the whole project needed). It is standalone — it does **not** require `app/bootstrap.php`, so it works even when the running site is broken.
+
+**To upgrade to 1.1.0:**
+
+1. Upload `upgrade_1.1.0.php` to the project root (next to `public/` and `app/`).
+2. Run it either way:
+   - Browser: `https://agenda.example.com/upgrade_1.1.0.php`
+   - CLI: `php /var/www/agenda/upgrade_1.1.0.php`
+3. It reads `settings.app_version` (missing = 1.0.0), **backs up** the 13 admin PHP files to `storage/tmp/upgrade_backup_<timestamp>/`, applies the path fixes, writes `app_version = 1.1.0`, and prints a per-file report. If it is already ≥ 1.1.0 it reports “already up to date” and exits.
+4. **Delete `upgrade_1.1.0.php` from the server afterwards** — it deliberately has no access token.
+
+### What 1.1.0 fixes
+- Admin panel fatal error `Failed opening required .../public/admin/../app/bootstrap.php`: the admin pages required bootstrap with a path one level too shallow. All 13 `public/admin/*.php` now use `../../app/bootstrap.php`.
+- Admin AJAX endpoints (`test mail`, `sync now`, Graph calendar picker) pointed at `ajax.php` instead of `../ajax.php`, so they 404'd from `/admin/`.
+
+---
+
+## 10. Troubleshooting
 
 - **Installer says requirements missing** → install the PHP extensions: `apt install php-curl php-mbstring php-mysql php-xml`.
 - **“Database connection failed”** → check `app/config.php` credentials and that MySQL is running (`systemctl status mysql`).
@@ -241,9 +262,11 @@ Always use an **app password / SMTP authorization code**, never your main accoun
 - **Approve doesn't create an Outlook event** → confirm you are connected to Microsoft and that a write-back calendar is selected. The error (if any) is shown on the booking details row.
 - **Times look wrong** → the site time zone is set in Admin → General settings; all stored times are UTC.
 - **Re-install** → delete `storage/installed.lock`, run `/install/` again (this resets the database).
+- **Admin panel 500 / `Failed opening required ...app/bootstrap.php`** → you are running a pre-1.1.0 copy of `public/admin/`. Run `upgrade_1.1.0.php` (see §9) or replace `public/admin/*.php` with the current versions.
+- **BTPanel admin 500 / open_basedir restriction** → set the run directory to `/public` and keep the open_basedir range at the site root (not `/public`) — see `deploy/btpanel.md` §3–§4.
 
 ---
 
-## 10. License / notes
+## 11. License / notes
 
 Built with **vanilla PHP** — the SMTP client and the iCalendar parser are self-contained, so the server needs **no internet at runtime** except for Microsoft Graph / calendar URLs / SMTP. No third-party SDKs are bundled.

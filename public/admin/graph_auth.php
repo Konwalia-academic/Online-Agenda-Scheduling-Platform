@@ -3,7 +3,7 @@
  * Starts the Microsoft OAuth authorization-code flow with PKCE.
  * Redirects the administrator to the Microsoft sign-in page.
  */
-require __DIR__ . '/../app/bootstrap.php';
+require __DIR__ . '/../../app/bootstrap.php';
 require_admin();
 
 if (!graph()->configured()) {

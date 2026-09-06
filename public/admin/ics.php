@@ -2,7 +2,7 @@
 /*
  * Download a booking as an .ics file (admin convenience).
  */
-require __DIR__ . '/../app/bootstrap.php';
+require __DIR__ . '/../../app/bootstrap.php';
 require_admin();
 
 $id = (int)($_GET['id'] ?? 0);

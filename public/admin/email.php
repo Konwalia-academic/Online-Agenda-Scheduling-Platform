@@ -1,5 +1,5 @@
 <?php
-require __DIR__ . '/../app/bootstrap.php';
+require __DIR__ . '/../../app/bootstrap.php';
 
 $flash = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -93,7 +93,7 @@ include __DIR__ . '/_top.php';
     var box = A.qs('#testResult');
     btn.disabled = true;
     box.innerHTML = '<p class="muted small"><?= e(t('loading')) ?></p>';
-    A.postJson('ajax.php?action=test_email', { to: A.qs('#testTo').value })
+    A.postJson('../ajax.php?action=test_email', { to: A.qs('#testTo').value })
       .then(function (res) {
         btn.disabled = false;
         box.innerHTML = res.ok

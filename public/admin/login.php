@@ -1,5 +1,5 @@
 <?php
-require __DIR__ . '/../app/bootstrap.php';
+require __DIR__ . '/../../app/bootstrap.php';
 
 if (is_admin()) {
     redirect(base_url() . '/admin/index.php');

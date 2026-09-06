@@ -1,5 +1,5 @@
 <?php
-require __DIR__ . '/../app/bootstrap.php';
+require __DIR__ . '/../../app/bootstrap.php';
 
 $flash = null;
 $error = null;
@@ -325,7 +325,7 @@ include __DIR__ . '/_top.php';
     var box = A.qs('#syncAllResult');
     btn.disabled = true;
     box.innerHTML = '<p class="muted small"><?= e(t('loading')) ?></p>';
-    A.postJson('ajax.php?action=sync', {}).then(function (res) {
+    A.postJson('../ajax.php?action=sync', {}).then(function (res) {
       btn.disabled = false;
       box.innerHTML = res.ok
         ? '<div class="alert alert-ok">' + A.escapeHtml(res.message) + '</div>'
@@ -336,7 +336,7 @@ include __DIR__ . '/_top.php';
   // load graph calendars into picker
   var pickForm = A.qs('#graphPickForm');
   if (pickForm) {
-    A.getJson('ajax.php?action=graph_calendars').then(function (res) {
+    A.getJson('../ajax.php?action=graph_calendars').then(function (res) {
       if (!res.ok) return;
       var box = A.qs('#graphCals');
       var bookingSel = A.qs('#graphBookingCal');
