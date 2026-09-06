@@ -126,7 +126,7 @@ https://agendas.limengjia.cn/install/
 访问 `https://agendas.limengjia.cn/admin/` 登录后，按顺序配置：
 
 1. **邮件设置 (E-mail)** — SMTP 主机/端口/加密/账号/密码（建议用应用专用密码），保存后点“发送测试邮件”验证。
-2. **日历管理 (Calendars)** — 接入 Outlook（Graph）、Google（私有 iCal 地址）或上传 .ics，然后点“立即同步”。若没配日历，前台日历页会显示为空（属正常）。
+2. **日历管理 (Calendars)** — 接入 Outlook（Graph）、Google（私有 iCal 地址）、上传 .ics，或添加 **CalDAV**（Nextcloud/Baikal/Radicale/iCloud），然后点“立即同步”。若没配日历，前台日历页会显示为空（属正常）。
 3. **通用设置 (General settings)** — 工作时间、时段步长、时长范围、活动后缓冲、最大可提前天数、时区。
 4. **外观设置 (Appearance)** — 修改全站主色。
 5. **安全设置 (Security)** — 修改邀请码（默认 `4310`）、管理员用户名/密码。
@@ -169,15 +169,19 @@ https://agendas.limengjia.cn/install/
 | 前台能开、后台进不去 | 用旧版本部署过 → 直接下载本仓库最新 `public/admin/*.php`（已修复路径），或运行 `upgrade_1.1.0.php`。 |
 | 邮件发不出去 | 后台邮件设置 → 发送测试。检查端口/加密；邮箱服务商需要用“授权码/应用专用密码”。 |
 | 日历页没有事件 | 后台日历管理 → 立即同步，看“上次同步/错误”列；Google 请用“私有 iCal 地址”（https://…）。 |
+| 日历选择器卡在“加载中/Loading…” | 更新 `public/assets/js/app.js`、`public/ajax.php`、`app/util.php`、`app/graph.php`、`public/admin/calendars.php`、`public/admin/email.php`（1.2.0 的 AJAX 加固）。原因是 PHP 警告混入 JSON 响应导致前端无法解析；现在会显示错误而不是一直转圈。 |
+| CalDAV 连接失败 / 401 | 检查服务器地址，并使用应用专用密码（iCloud/Nextcloud）。添加后具体的错误会显示在 后台 → 日历管理。 |
 | 同步任务不执行 | 检查计划任务脚本里的 PHP 路径是否正确、storage/logs 是否可写、storage/logs/sync.log 有无报错。 |
+| 登录 Outlook 报 `AADSTS500113: No reply address is registered` | Azure 应用注册中缺少/不匹配“重定向 URI”。去 **后台 → 日历管理 → 重定向 URI** 复制那串地址，再到 **Azure → 应用注册 → 你的应用 → 身份验证 → 添加平台 → Web → 重定向 URI** 粘贴并保存。必须完全一致（http/https、www、末尾不能有斜杠）。该地址由 **后台 → 通用设置 → 站点基础地址** 决定，若站点配置的域名与你当前访问域名不一致，地址会变化。 |
 
 ---
 
 ## 11. 升级已部署的版本 / Upgrade an installed site
 
-如果服务器上已经部署了旧版本（例如 1.0.0，后台打不开），请把仓库根目录的 `upgrade_1.1.0.php` 上传到站点根目录（与 `public/`、`app/` 同级），然后：
+如果服务器上已经部署了旧版本（例如 1.0.0，后台打不开），请把仓库根目录的 `upgrade_1.1.0.php` / `upgrade_1.2.0.php` 上传到站点根目录（与 `public/`、`app/` 同级），然后：
 
-- **浏览器访问**：`https://agendas.limengjia.cn/upgrade_1.1.0.php`
-- **或命令行**：`/www/server/php/82/bin/php /www/wwwroot/agendas.limengjia.cn/upgrade_1.1.0.php`
+- **浏览器访问**：由于运行目录是 `/public`，升级文件放在根目录无法通过 URL 直接访问。请把 `public/upgrade_run.php` 上传到 `public/` 目录，然后访问：
+  `https://agendas.limengjia.cn/upgrade_run.php`
+- **或命令行**：`/www/server/php/82/bin/php /www/wwwroot/agendas.limengjia.cn/upgrade_1.2.0.php`
 
-脚本会自动备份 `public/admin/*.php` 并修正 1.1.0 的路径问题，然后把 `app_version` 写入设置表。**运行完请立刻删除该文件**（它不设访问令牌，防止被他人再次调用）。详见 `readme.md` 第 12 节。
+脚本会自动修正 1.2.0 的数据库变更（`calendars.ctype` 增加 `caldav`）并把 `app_version` 写入设置表。升级脚本会自动定位项目根目录，并会尝试用 `127.0.0.1` 连接数据库以避开 CLI 下的 `localhost` 套接字问题。**运行完请立刻删除** `upgrade_1.2.0.php` 和 `public/upgrade_run.php`（它们不设访问令牌，防止被他人再次调用）。详见 `readme.md` 第 9 节。

@@ -98,7 +98,11 @@ include __DIR__ . '/_top.php';
         btn.disabled = false;
         box.innerHTML = res.ok
           ? '<div class="alert alert-ok">' + A.escapeHtml(res.message) + '</div>'
-          : '<div class="alert alert-bad">' + A.escapeHtml(res.error) + '</div>';
+          : '<div class="alert alert-bad">' + A.escapeHtml(res.error || '<?= e(t('error')) ?>') + '</div>';
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        box.innerHTML = '<div class="alert alert-bad"><?= e(t('error')) ?>: ' + A.escapeHtml(err) + '</div>';
       });
   });
 })();

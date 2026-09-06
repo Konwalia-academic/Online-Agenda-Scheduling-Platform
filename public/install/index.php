@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS admin (
 CREATE TABLE IF NOT EXISTS calendars (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(200) NOT NULL,
-  ctype ENUM('graph','upload','url') NOT NULL DEFAULT 'url',
+  ctype ENUM('graph','upload','url','caldav') NOT NULL DEFAULT 'url',
   config TEXT NULL,
   enabled TINYINT(1) NOT NULL DEFAULT 1,
   last_sync_at DATETIME NULL,

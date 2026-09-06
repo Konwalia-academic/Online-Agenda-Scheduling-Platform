@@ -205,6 +205,9 @@ Match `10` to the “Automatic sync interval” in Admin → Calendars. The cron
 ### Using a personal Outlook / Google calendar without Graph
 - **Google Calendar**: open the calendar's settings → **Settings and sharing** → scroll to “Secret address in iCal format” → copy the URL → add it in **Admin → Calendars → Add iCal URL**.
 - **Any calendar that exports `.ics`**: download the file and use **Add / Upload .ics file**.
+- **CalDAV** (Nextcloud, Baikal, Radicale, iCloud, Zimbra): **Admin → Calendars → Add CalDAV calendar**. Enter the server URL, username and password/app-password, click **Connect & list calendars**, then tick which sub-calendars to add. Each becomes a read-only source: its events block busy time and appear on the calendar page, but approved bookings are **confirmed by e-mail only** (no write-back, like `.ics`/URL sources).
+
+> Server URL examples: Nextcloud `https://nextcloud.example.com/remote.php/dav/`, Radicale `https://radicale.example.com:5232/user/`, Baikal `https://baikal.example.com/dav.php/`. If you only enter a bare host, `/remote.php/dav` is appended automatically.
 
 ---
 
@@ -238,6 +241,13 @@ Always use an **app password / SMTP authorization code**, never your main accoun
 
 Each release ships a self-contained `upgrade_<version>.php` at the project root. It applies the changes to a server that is **already deployed and running** (no re-upload of the whole project needed). It is standalone — it does **not** require `app/bootstrap.php`, so it works even when the running site is broken.
 
+**Running on BTPanel with web root set to `/public`:** the upgrade file auto-detects the project root (walks up to `app/config.php`), and a small web runner is provided inside `public/`. So:
+
+- **Browser:** upload `upgrade_1.2.0.php` to the project root and `public/upgrade_run.php` into `public/`, then open `https://agenda.example.com/upgrade_run.php`
+- **CLI:** `php /var/www/agenda/upgrade_1.2.0.php` (or place it in `public/` and run `php /var/www/agenda/public/upgrade_1.2.0.php` — it still finds the root)
+
+The upgrade script also handles the Linux `localhost`-socket problem: it tries the configured DB host, then `127.0.0.1`, then `localhost`, so it connects whether MySQL uses a socket or TCP.
+
 **To upgrade to 1.1.0:**
 
 1. Upload `upgrade_1.1.0.php` to the project root (next to `public/` and `app/`).
@@ -251,6 +261,15 @@ Each release ships a self-contained `upgrade_<version>.php` at the project root.
 - Admin panel fatal error `Failed opening required .../public/admin/../app/bootstrap.php`: the admin pages required bootstrap with a path one level too shallow. All 13 `public/admin/*.php` now use `../../app/bootstrap.php`.
 - Admin AJAX endpoints (`test mail`, `sync now`, Graph calendar picker) pointed at `ajax.php` instead of `../ajax.php`, so they 404'd from `/admin/`.
 
+### 1.2.0 (CalDAV + AJAX robustness)
+- **New CalDAV feature** (read-only client): `app/caldav.php`, a CalDAV source in `app/sync_lib.php`, an **Add CalDAV calendar** card in Admin → Calendars, and the `caldav` value added to `calendars.ctype`.
+- **AJAX hardening** so a PHP warning can no longer hang the UI at “Loading…”:
+  - `json_out()` discards buffered output (warnings) before emitting JSON.
+  - `ajax.php` starts an output buffer + wraps the handler in try/catch.
+  - `app.js` adds a fetch timeout and readable errors for non-JSON/non-OK responses.
+  - All admin AJAX calls have `.catch` handlers.
+- Upgrade with `upgrade_1.2.0.php` (applies the DB change + sets `app_version`), then re-upload the changed files (listed in its output). Because the web root is `/public`, use the bundled `public/upgrade_run.php` to run it from the browser (`/upgrade_run.php`), or run it via CLI.
+
 ---
 
 ## 10. Troubleshooting
@@ -259,9 +278,12 @@ Each release ships a self-contained `upgrade_<version>.php` at the project root.
 - **“Database connection failed”** → check `app/config.php` credentials and that MySQL is running (`systemctl status mysql`).
 - **E-mails not sent** → Admin → E-mail → Send test. Check the port/encryption and that the provider requires an app password. Look in `storage/logs/`.
 - **Calendar shows no events** → Admin → Calendars → Sync now, and check the “Last sync / error” column. For URL sources confirm the link is the **secret iCal address** (must be `https://`).
+- **Calendar picker stuck at “Loading…”** → update `public/assets/js/app.js`, `public/ajax.php`, `app/util.php`, `app/graph.php`, `public/admin/calendars.php`, `public/admin/email.php` (the 1.2.0 hardening). It was caused by a PHP warning corrupting the JSON response with no JS error handler; now errors are shown instead of hanging.
+- **CalDAV can't connect / 401** → check the server URL and use an app password (iCloud/Nextcloud). The exact error appears in Admin → Calendars after adding.
 - **Approve doesn't create an Outlook event** → confirm you are connected to Microsoft and that a write-back calendar is selected. The error (if any) is shown on the booking details row.
 - **Times look wrong** → the site time zone is set in Admin → General settings; all stored times are UTC.
 - **Re-install** → delete `storage/installed.lock`, run `/install/` again (this resets the database).
+- **Microsoft sign-in fails with `AADSTS500113: No reply address is registered for the application`** → this is an Azure registration problem, not a code issue. Register the **exact** redirect URI shown in **Admin → Calendars → Redirect URI** (e.g. `https://agendas.limengjia.cn/admin/graph_callback.php`) in **Azure → App registrations → your app → Authentication → Add a platform → Web → Redirect URIs**. It must match exactly — same `http`/`https`, same `www`/non-`www`, and **no trailing slash** (the app sends no trailing slash). The redirect URI is derived from the site URL set in **Admin → General settings → Site base URL**, so if you access the site via a different host/IP, the value changes.
 - **Admin panel 500 / `Failed opening required ...app/bootstrap.php`** → you are running a pre-1.1.0 copy of `public/admin/`. Run `upgrade_1.1.0.php` (see §9) or replace `public/admin/*.php` with the current versions.
 - **BTPanel admin 500 / open_basedir restriction** → set the run directory to `/public` and keep the open_basedir range at the site root (not `/public`) — see `deploy/btpanel.md` §3–§4.
 

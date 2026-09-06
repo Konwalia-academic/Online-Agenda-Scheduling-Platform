@@ -118,6 +118,10 @@ function sync_calendar_row(array $row): array
                 $rows = graph_rows();
                 break;
 
+            case 'caldav':
+                $rows = caldav_rows(json_decode((string)$row['config'], true) ?: []);
+                break;
+
             default:
                 throw new RuntimeException('Unknown calendar type.');
         }
@@ -132,6 +136,26 @@ function sync_calendar_row(array $row): array
     $stmt = $pdo->prepare('UPDATE calendars SET last_sync_at = ?, last_sync_error = ? WHERE id = ?');
     $stmt->execute([utc_now(), $result['error'], (int)$row['id']]);
     return $result;
+}
+
+/** Fetch + cache rows for a CalDAV calendar (read-only). */
+function caldav_rows(array $config): array
+{
+    $server = (string)($config['server'] ?? '');
+    $username = (string)($config['username'] ?? '');
+    $passEnc = (string)($config['password_enc'] ?? '');
+    $href = (string)($config['calendar_href'] ?? '');
+    if ($server === '' || $href === '' || $username === '') {
+        throw new RuntimeException('CalDAV configuration is incomplete.');
+    }
+    $password = decrypt_value($passEnc) ?? '';
+    if ($password === '') {
+        throw new RuntimeException('CalDAV password is missing or could not be decrypted.');
+    }
+    $client = new CalDavClient($server, $username, $password);
+    [$winStart, $winEnd] = sync_window();
+    $ics = $client->fetchEvents($href, $winStart, $winEnd);
+    return ics_text_to_rows($ics);
 }
 
 /** Rows for all selected Outlook sub-calendars (via Graph). */

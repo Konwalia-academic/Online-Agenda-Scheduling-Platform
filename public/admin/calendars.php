@@ -124,6 +124,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             graph()->disconnect();
             $flash = t('saved');
             break;
+
+        case 'add_caldav':
+            $name = trim((string)($_POST['name'] ?? ''));
+            $server = trim((string)($_POST['caldav_server'] ?? ''));
+            $username = trim((string)($_POST['caldav_username'] ?? ''));
+            $password = (string)($_POST['caldav_password'] ?? '');
+            if ($server === '' || $username === '' || $password === '') {
+                $error = t('book_err_required');
+                break;
+            }
+            try {
+                $client = new CalDavClient($server, $username, $password);
+                $discovered = $client->listCalendars();
+                if (!$discovered['ok']) {
+                    $error = t('cal_caldav_discover_err', ['error' => $discovered['error']]);
+                    break;
+                }
+                if (count($discovered['cals']) === 0) {
+                    $error = t('cal_caldav_no_cal');
+                    break;
+                }
+                // Store for the confirmation step (kept in hidden fields).
+                $pendingCaldav = [
+                    'name' => $name,
+                    'server' => $server,
+                    'username' => $username,
+                    'password' => $password,
+                    'cals' => $discovered['cals'],
+                ];
+            } catch (Throwable $ex) {
+                $error = t('cal_caldav_discover_err', ['error' => $ex->getMessage()]);
+            }
+            break;
+
+        case 'add_caldav_confirm':
+            $name = trim((string)($_POST['name'] ?? ''));
+            $server = trim((string)($_POST['caldav_server'] ?? ''));
+            $username = trim((string)($_POST['caldav_username'] ?? ''));
+            $password = (string)($_POST['caldav_password'] ?? '');
+            $selected = $_POST['cals'] ?? [];
+            $selected = is_array($selected) ? array_values($selected) : [];
+            if ($server === '' || $username === '' || $password === '' || count($selected) === 0) {
+                $error = t('book_err_required');
+                break;
+            }
+            $passEnc = encrypt_value($password);
+            $added = 0;
+            foreach ($selected as $key) {
+                $key = base64_decode((string)$key, true);
+                if ($key === false) {
+                    continue;
+                }
+                [$href, $displayname] = explode("\x00", $key, 2) + [1 => ''];
+                if ($href === '') {
+                    continue;
+                }
+                $cfg = json_encode([
+                    'server' => $server,
+                    'username' => $username,
+                    'password_enc' => $passEnc,
+                    'calendar_href' => $href,
+                    'displayname' => $displayname,
+                ]);
+                $calName = $name !== '' ? $name . ($displayname !== '' ? ' · ' . $displayname : '') : ($displayname !== '' ? $displayname : 'CalDAV');
+                $ins = $pdo->prepare('INSERT INTO calendars (name, ctype, config, enabled, created_at) VALUES (?, ?, ?, 1, ?)');
+                $ins->execute([$calName, 'caldav', $cfg, utc_now()]);
+                $newId = (int)$pdo->lastInsertId();
+                $res = sync_calendar_row(['id' => $newId, 'ctype' => 'caldav', 'config' => $cfg]);
+                if ($res['ok']) {
+                    $added++;
+                } else {
+                    $error = t('cal_sync_failed', ['error' => $res['error']]);
+                }
+            }
+            $flash = $added > 0 ? t('cal_caldav_added') : ($error ?? t('error'));
+            break;
     }
 }
 
@@ -167,7 +243,7 @@ include __DIR__ . '/_top.php';
     <div class="alert alert-ok">
       <?= e(t('cal_graph_connected_as')) ?>: <b><?= e((string)setting('graph_user_email', '')) ?></b>
       <?php if ($exp = graph()->tokenExpiresAt()): ?>
-        · <?= e(t('cal_graph_token_ok')) ?> <?= e(date('Y-m-d H:i', $exp)) ?>
+        · <?= e(t('cal_graph_token_ok')) ?> <?= e(utc_to_local(gmdate('Y-m-d H:i:s', $exp))->format('Y-m-d H:i')) ?>
       <?php endif; ?>
     </div>
 
@@ -219,6 +295,7 @@ include __DIR__ . '/_top.php';
         <div class="field">
           <label><?= e(t('cal_graph_redirect')) ?></label>
           <input type="text" value="<?= e(graph()->redirectUri()) ?>" readonly class="kbd">
+          <div class="hint" style="color:#b91c1c;"><?= e(t('cal_graph_redirect_hint')) ?></div>
         </div>
       </div>
       <div class="inline-flex">
@@ -229,9 +306,9 @@ include __DIR__ . '/_top.php';
   <?php endif; ?>
 </div>
 
-<!-- ============ Add upload / URL ============ -->
+<!-- ============ Add upload / URL / CalDAV ============ -->
 <h2 class="section-title"><?= e(t('cal_add')) ?></h2>
-<div class="grid grid-2 mb">
+<div class="grid grid-3 mb">
   <div class="card">
     <h3 class="section-title" style="margin-top:0;"><?= e(t('cal_add_upload')) ?></h3>
     <form method="post" action="calendars.php" enctype="multipart/form-data">
@@ -263,6 +340,52 @@ include __DIR__ . '/_top.php';
       </div>
       <button type="submit" class="btn"><?= e(t('cal_add')) ?></button>
     </form>
+  </div>
+  <div class="card">
+    <h3 class="section-title" style="margin-top:0;"><?= e(t('cal_add_caldav')) ?></h3>
+    <p class="muted small"><?= e(t('cal_caldav_hint')) ?></p>
+    <?php if (!empty($pendingCaldav)): ?>
+      <form method="post" action="calendars.php">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="add_caldav_confirm">
+        <input type="hidden" name="name" value="<?= e($pendingCaldav['name']) ?>">
+        <input type="hidden" name="caldav_server" value="<?= e($pendingCaldav['server']) ?>">
+        <input type="hidden" name="caldav_username" value="<?= e($pendingCaldav['username']) ?>">
+        <input type="hidden" name="caldav_password" value="<?= e($pendingCaldav['password']) ?>">
+        <label class="field"><b><?= e(t('cal_caldav_pick')) ?></b></label>
+        <?php foreach ($pendingCaldav['cals'] as $c): ?>
+          <?php $key = base64_encode($c['href'] . "\x00" . $c['displayname']); ?>
+          <label style="display:block;margin-bottom:8px;">
+            <input type="checkbox" name="cals[]" value="<?= e($key) ?>" checked>
+            <?= e($c['displayname']) ?>
+          </label>
+        <?php endforeach; ?>
+        <button type="submit" class="btn"><?= e(t('cal_add')) ?></button>
+      </form>
+    <?php else: ?>
+      <form method="post" action="calendars.php">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="add_caldav">
+        <div class="field">
+          <label><?= e(t('cal_name')) ?></label>
+          <input type="text" name="name" maxlength="200">
+        </div>
+        <div class="field">
+          <label><?= e(t('cal_caldav_server')) ?></label>
+          <input type="text" name="caldav_server" placeholder="https://nextcloud.example.com/remote.php/dav/" required>
+        </div>
+        <div class="field">
+          <label><?= e(t('cal_caldav_username')) ?></label>
+          <input type="text" name="caldav_username" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label><?= e(t('cal_caldav_password')) ?></label>
+          <input type="password" name="caldav_password" required autocomplete="new-password">
+          <div class="hint"><?= e(t('cal_caldav_password_hint')) ?></div>
+        </div>
+        <button type="submit" class="btn"><?= e(t('cal_caldav_connect')) ?></button>
+      </form>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -315,6 +438,16 @@ include __DIR__ . '/_top.php';
 </div>
 <?php endif; ?>
 
+<?php if ($graphConnected): ?>
+<div class="card mt">
+  <p class="small muted"><?= e(t('cal_warn_no_write')) ?></p>
+</div>
+<?php else: ?>
+<div class="card mt">
+  <p class="small muted"><?= e(t('cal_warn_readonly')) ?></p>
+</div>
+<?php endif; ?>
+
 <script>
 (function () {
   var A = window.Agenda;
@@ -329,18 +462,32 @@ include __DIR__ . '/_top.php';
       btn.disabled = false;
       box.innerHTML = res.ok
         ? '<div class="alert alert-ok">' + A.escapeHtml(res.message) + '</div>'
-        : '<div class="alert alert-bad">' + A.escapeHtml(res.error) + '</div>';
+        : '<div class="alert alert-bad">' + A.escapeHtml(res.error || '<?= e(t('error')) ?>') + '</div>';
+    }).catch(function (err) {
+      btn.disabled = false;
+      box.innerHTML = '<div class="alert alert-bad"><?= e(t('error')) ?>: ' + A.escapeHtml(err) + '</div>';
     });
   });
 
   // load graph calendars into picker
   var pickForm = A.qs('#graphPickForm');
   if (pickForm) {
+    var box = A.qs('#graphCals');
     A.getJson('../ajax.php?action=graph_calendars').then(function (res) {
-      if (!res.ok) return;
-      var box = A.qs('#graphCals');
+      if (!res.ok) {
+        box.innerHTML = '<div class="alert alert-bad">' + A.escapeHtml(res.error || '<?= e(t('error')) ?>') + '</div>';
+        return;
+      }
+      if (res.error) {
+        box.innerHTML = '<div class="alert alert-bad">' + A.escapeHtml(res.error) + '</div>';
+        return;
+      }
       var bookingSel = A.qs('#graphBookingCal');
       var html = '';
+      if (!res.cals.length) {
+        box.innerHTML = '<p class="muted"><?= e(t('cal_graph_no_cal')) ?></p>';
+        return;
+      }
       res.cals.forEach(function (c) {
         var checked = (res.selected || []).indexOf(c.id) !== -1 ? ' checked' : '';
         var editable = c.canEdit ? '' : ' (' + <?= json_encode(t('disabled')) ?> + ')';
@@ -356,6 +503,8 @@ include __DIR__ . '/_top.php';
         if (c.id === res.booking) o.selected = true;
         bookingSel.appendChild(o);
       });
+    }).catch(function (err) {
+      box.innerHTML = '<div class="alert alert-bad"><?= e(t('error')) ?>: ' + A.escapeHtml(err) + '</div>';
     });
   }
 })();

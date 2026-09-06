@@ -46,6 +46,7 @@ require APP . '/csrf.php';
 require APP . '/auth.php';
 require APP . '/mailer.php';
 require APP . '/ics.php';
+require APP . '/caldav.php';
 require APP . '/graph.php';
 require APP . '/availability.php';
 require APP . '/mail_templates.php';

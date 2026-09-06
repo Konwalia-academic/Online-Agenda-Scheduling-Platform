@@ -257,6 +257,7 @@ return [
     'cal_graph_client' => 'Application (client) ID',
     'cal_graph_secret' => 'Client secret',
     'cal_graph_redirect' => 'Redirect URI to register',
+    'cal_graph_redirect_hint' => 'The app always sends this as HTTPS (Azure requires it). Register this EXACT address in Azure: App registrations → your app → Authentication → Add a platform → Web → Redirect URIs. If it does not match (host/domain or trailing slash), sign-in fails with AADSTS500113. Tip: if it still shows http, update Admin → General settings → Site base URL to start with https.',
     'cal_graph_connect' => 'Sign in with Microsoft',
     'cal_graph_reconnect' => 'Reconnect Microsoft account',
     'cal_graph_disconnect' => 'Disconnect',
@@ -269,6 +270,21 @@ return [
     'cal_graph_no_cal' => 'No calendars found for this account.',
     'cal_booking_calendar' => 'Booking write-back calendar',
     'cal_warn_no_write' => 'Note: for uploaded/URL calendars, approved bookings cannot be written back to the source calendar — confirmations are sent by e-mail only.',
+
+    // admin: calendars — CalDAV
+    'cal_add_caldav' => 'Add CalDAV calendar',
+    'cal_type_caldav' => 'CalDAV',
+    'cal_caldav_hint' => 'Connect to a CalDAV server (Nextcloud, Baikal, Radicale, iCloud, Zimbra…). Read-only: your events will block busy time and show on the calendar, but approved bookings are confirmed by e-mail only.',
+    'cal_caldav_server' => 'Server URL',
+    'cal_caldav_username' => 'Username',
+    'cal_caldav_password' => 'Password / App password',
+    'cal_caldav_password_hint' => 'Use an app-specific password when available (e.g. iCloud). Stored encrypted.',
+    'cal_caldav_connect' => 'Connect & list calendars',
+    'cal_caldav_pick' => 'Select which CalDAV calendars to add:',
+    'cal_caldav_discover_err' => 'Could not connect or discover CalDAV calendars: {error}',
+    'cal_caldav_no_cal' => 'No CalDAV calendars found for this account.',
+    'cal_caldav_added' => 'CalDAV calendar(s) added and synced.',
+    'cal_warn_readonly' => 'Note: uploaded (.ics), URL and CalDAV calendars are read-only sources — approved bookings are confirmed by e-mail only, they are not written back to the source calendar.',
 
     // admin: email
     'mail_settings' => 'SMTP e-mail settings',

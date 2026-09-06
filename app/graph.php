@@ -27,7 +27,13 @@ final class GraphClient
 
     public function redirectUri(): string
     {
-        return base_url() . '/admin/graph_callback.php';
+        // Azure only accepts HTTPS redirect URIs, so always send HTTPS even
+        // if the configured site_url (or the detected scheme) is http.
+        $base = base_url();
+        if (preg_match('#^https?://#i', $base)) {
+            $base = preg_replace('#^https?://#i', 'https://', $base);
+        }
+        return $base . '/admin/graph_callback.php';
     }
 
     public function needsReauth(): bool
@@ -171,6 +177,27 @@ final class GraphClient
             usort($cals, fn($a, $b) => strcmp((string)$a['name'], (string)$b['name']));
         }
         return $cals;
+    }
+
+    /** Like listCalendars() but reports errors so the UI can show why it failed. */
+    public function listCalendarsDetailed(): array
+    {
+        $res = $this->api('/me/calendars?$select=id,name,canEdit,owner');
+        $out = ['ok' => $res['ok'], 'cals' => [], 'error' => ''];
+        if (!$res['ok']) {
+            $out['error'] = $res['data']['error']['message']
+                ?? ('Microsoft Graph error (HTTP ' . $res['status'] . ')');
+            return $out;
+        }
+        foreach ($res['data']['value'] ?? [] as $c) {
+            $out['cals'][] = [
+                'id' => $c['id'],
+                'name' => $c['name'],
+                'canEdit' => $c['canEdit'] ?? false,
+            ];
+        }
+        usort($out['cals'], fn($a, $b) => strcmp((string)$a['name'], (string)$b['name']));
+        return $out;
     }
 
     /** Events in a calendar between two UTC datetimes (ISO8601). */

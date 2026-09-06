@@ -257,6 +257,7 @@ return [
     'cal_graph_client' => '应用程序（客户端）ID',
     'cal_graph_secret' => '客户端机密',
     'cal_graph_redirect' => '需要注册的重定向地址',
+    'cal_graph_redirect_hint' => '本程序始终以 HTTPS 发送该地址（Azure 要求 HTTPS）。请在 Azure 中注册这个完全一致的地址：应用注册 → 你的应用 → 身份验证 → 添加平台 → Web → 重定向 URI。若不一致（域名或末尾斜杠），登录会报 AADSTS500113。提示：若仍显示 http，请到 后台 → 通用设置 → 站点基础地址 改为 https 开头。',
     'cal_graph_connect' => '使用微软账户登录',
     'cal_graph_reconnect' => '重新连接微软账户',
     'cal_graph_disconnect' => '断开连接',
@@ -269,6 +270,21 @@ return [
     'cal_graph_no_cal' => '该账户下未找到日历。',
     'cal_booking_calendar' => '预约回写日历',
     'cal_warn_no_write' => '注意：对于上传/URL 类型的日历，已批准的预约无法回写到源日历——确认将通过邮件发送。',
+
+    // 日历管理 - CalDAV
+    'cal_add_caldav' => '添加 CalDAV 日历',
+    'cal_type_caldav' => 'CalDAV',
+    'cal_caldav_hint' => '连接 CalDAV 服务器（Nextcloud、Baikal、Radicale、iCloud、Zimbra 等）。只读模式：您的活动会占用忙碌时间并显示在日历上，但已批准的预约仅通过邮件确认。',
+    'cal_caldav_server' => '服务器地址',
+    'cal_caldav_username' => '用户名',
+    'cal_caldav_password' => '密码 / 应用专用密码',
+    'cal_caldav_password_hint' => '如可用请使用应用专用密码（如 iCloud）。密码加密存储。',
+    'cal_caldav_connect' => '连接并列出日历',
+    'cal_caldav_pick' => '选择要添加的 CalDAV 日历：',
+    'cal_caldav_discover_err' => '无法连接或发现 CalDAV 日历：{error}',
+    'cal_caldav_no_cal' => '该账户下未找到 CalDAV 日历。',
+    'cal_caldav_added' => 'CalDAV 日历已添加并同步。',
+    'cal_warn_readonly' => '注意：上传（.ics）、URL 和 CalDAV 日历为只读来源——已批准的预约仅通过邮件确认，不会回写到源日历。',
 
     // 邮件设置
     'mail_settings' => 'SMTP 邮件设置',

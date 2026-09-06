@@ -1,12 +1,17 @@
 <?php
 /*
  * AJAX endpoint used by the public pages and the admin panel.
+ * All responses are JSON. We start an output buffer and json_out() discards it,
+ * so PHP warnings/notices can never corrupt a JSON response.
  */
 require __DIR__ . '/../app/bootstrap.php';
 
+ob_start();
+
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
 
-switch ($action) {
+try {
+    switch ($action) {
 
     // ---- public: available start times for a day + duration ----
     case 'slots':
@@ -99,11 +104,23 @@ switch ($action) {
     // ---- admin: list Outlook sub-calendars for selection ----
     case 'graph_calendars':
         require_admin();
-        $cals = graph()->listCalendars();
+        if (!graph()->configured() || !graph()->isConnected()) {
+            json_out(['ok' => false, 'error' => t('cal_graph_token_expired')]);
+        }
+        $detail = graph()->listCalendarsDetailed();
         $selected = json_decode((string)setting('graph_calendars', '[]'), true) ?: [];
         $booking = setting('graph_booking_calendar', '');
-        json_out(['ok' => true, 'cals' => $cals, 'selected' => $selected, 'booking' => $booking]);
+        json_out([
+            'ok' => $detail['ok'],
+            'cals' => $detail['cals'],
+            'selected' => $selected,
+            'booking' => $booking,
+            'error' => $detail['error'],
+        ]);
 
     default:
         json_out(['ok' => false, 'error' => 'Unknown action.'], 404);
+    }
+} catch (Throwable $ex) {
+    json_out(['ok' => false, 'error' => $ex->getMessage()], 500);
 }
